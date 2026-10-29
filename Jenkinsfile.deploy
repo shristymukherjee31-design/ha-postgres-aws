@@ -1,6 +1,14 @@
-// One-click deploy: infrastructure, configuration and validation.
+// One job, three actions: deploy, failover or destroy.
+// Pick the action with "Build with Parameters".
 pipeline {
   agent any
+
+  parameters {
+    choice(name: 'ACTION', choices: ['deploy', 'failover', 'destroy'],
+      description: 'deploy = build + configure + validate, failover = fence/promote/DNS, destroy = tear everything down')
+    booleanParam(name: 'FORCE', defaultValue: false,
+      description: 'Only for failover: fail over even if the primary still responds')
+  }
 
   options {
     timestamps()
@@ -10,10 +18,15 @@ pipeline {
 
   environment {
     REPO_DIR = '/home/shristy/ha-postgres-aws'
+    // failover.sh reads FORCE from the environment (1 = force)
+    FORCE    = "${params.FORCE ? '1' : '0'}"
   }
 
-// The laptop's public IP changes between networks; refresh it first.
+  stages {
+    // The laptop's public IP changes between networks; refresh it first.
+    // Not needed for destroy.
     stage('Allow my IP') {
+      when { expression { params.ACTION != 'destroy' } }
       steps {
         dir(env.REPO_DIR) {
           sh './scripts/allow_my_ip.sh'
@@ -21,8 +34,9 @@ pipeline {
       }
     }
 
-  stages {
+    // ---------- ACTION = deploy ----------
     stage('Terraform apply') {
+      when { expression { params.ACTION == 'deploy' } }
       steps {
         dir(env.REPO_DIR) {
           sh 'terraform init -input=false'
@@ -33,6 +47,7 @@ pipeline {
 
     // Ansible must not start before sshd is up on every instance.
     stage('Wait for SSH') {
+      when { expression { params.ACTION == 'deploy' } }
       steps {
         sh '''#!/bin/bash
 set -u
@@ -58,6 +73,7 @@ echo "SSH is ready on all hosts"
 
     // The primary is configured before the standby (see site.yml).
     stage('Ansible configure') {
+      when { expression { params.ACTION == 'deploy' } }
       steps {
         dir("${env.REPO_DIR}/ansible") {
           sh 'ansible-playbook site.yml'
@@ -66,9 +82,39 @@ echo "SSH is ready on all hosts"
     }
 
     stage('Validate') {
+      when { expression { params.ACTION == 'deploy' } }
       steps {
         dir(env.REPO_DIR) {
           sh './tests/validate.sh'
+        }
+      }
+    }
+
+    // ---------- ACTION = failover ----------
+    stage('Failover') {
+      when { expression { params.ACTION == 'failover' } }
+      steps {
+        dir(env.REPO_DIR) {
+          sh './scripts/failover.sh'
+        }
+      }
+    }
+
+    // ---------- ACTION = destroy ----------
+    // Manual confirmation guards against accidental runs.
+    stage('Confirm destroy') {
+      when { expression { params.ACTION == 'destroy' } }
+      steps {
+        input message: 'Destroy ALL infrastructure (VPC, EC2, NAT, DNS, backup bucket)?', ok: 'Destroy'
+      }
+    }
+
+    stage('Terraform destroy') {
+      when { expression { params.ACTION == 'destroy' } }
+      steps {
+        dir(env.REPO_DIR) {
+          sh 'terraform init -input=false'
+          sh 'terraform destroy -auto-approve -input=false'
         }
       }
     }
