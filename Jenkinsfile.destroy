@@ -1,0 +1,31 @@
+// Destroys the whole stack. A manual confirmation step guards against
+// accidental runs.
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+  }
+
+  environment {
+    REPO_DIR = '/home/shristy/ha-postgres-aws'
+  }
+
+  stages {
+    stage('Confirm') {
+      steps {
+        input message: 'Destroy ALL infrastructure (VPC, EC2, NAT, DNS, backup bucket)?', ok: 'Destroy'
+      }
+    }
+
+    stage('Terraform destroy') {
+      steps {
+        dir(env.REPO_DIR) {
+          sh 'terraform init -input=false'
+          sh 'terraform destroy -auto-approve -input=false'
+        }
+      }
+    }
+  }
+}
