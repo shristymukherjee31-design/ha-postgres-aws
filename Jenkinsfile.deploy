@@ -1,0 +1,67 @@
+// One-click deploy: infrastructure, configuration and validation.
+pipeline {
+  agent any
+
+  options {
+    timestamps()
+    disableConcurrentBuilds()
+    timeout(time: 40, unit: 'MINUTES')
+  }
+
+  environment {
+    REPO_DIR = '/home/shristy/ha-postgres-aws'
+  }
+
+  stages {
+    stage('Terraform apply') {
+      steps {
+        dir(env.REPO_DIR) {
+          sh 'terraform init -input=false'
+          sh 'terraform apply -auto-approve -input=false'
+        }
+      }
+    }
+
+    // Ansible must not start before sshd is up on every instance.
+    stage('Wait for SSH') {
+      steps {
+        sh '''#!/bin/bash
+set -u
+for host in bastion primary standby; do
+  ok=0
+  for i in $(seq 1 30); do
+    if ssh -o BatchMode=yes -o ConnectTimeout=10 "$host" true 2>/dev/null; then
+      ok=1
+      break
+    fi
+    echo "Waiting for SSH on $host ($i/30)"
+    sleep 10
+  done
+  if [ "$ok" != "1" ]; then
+    echo "SSH to $host did not become ready"
+    exit 1
+  fi
+done
+echo "SSH is ready on all hosts"
+'''
+      }
+    }
+
+    // The primary is configured before the standby (see site.yml).
+    stage('Ansible configure') {
+      steps {
+        dir("${env.REPO_DIR}/ansible") {
+          sh 'ansible-playbook site.yml'
+        }
+      }
+    }
+
+    stage('Validate') {
+      steps {
+        dir(env.REPO_DIR) {
+          sh './tests/validate.sh'
+        }
+      }
+    }
+  }
+}

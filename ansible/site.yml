@@ -1,0 +1,19 @@
+---
+# Entry point: applies roles to the database nodes, in order.
+- name: Install PostgreSQL on all database nodes
+  hosts: db
+  become: true
+  roles:
+    - common
+
+- name: Configure primary
+  hosts: primary_nodes
+  become: true
+  roles:
+    - postgres_primary
+
+- name: Configure standby
+  hosts: standby_nodes
+  become: true
+  roles:
+    - postgres_standby

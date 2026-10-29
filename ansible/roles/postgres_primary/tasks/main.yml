@@ -1,0 +1,49 @@
+---
+# Configures the primary node to stream WAL to a standby.
+
+- name: Install acl (needed when switching to the postgres user)
+  ansible.builtin.apt:
+    name: acl
+    state: present
+
+- name: Deploy replication settings
+  ansible.builtin.template:
+    src: replication.conf.j2
+    dest: "/etc/postgresql/{{ pg_version }}/main/conf.d/replication.conf"
+    owner: postgres
+    group: postgres
+    mode: "0644"
+  notify: Restart PostgreSQL
+
+- name: Allow the replication user to connect from the VPC
+  ansible.builtin.lineinfile:
+    path: "/etc/postgresql/{{ pg_version }}/main/pg_hba.conf"
+    line: "host replication {{ replication_user }} {{ vpc_cidr }} scram-sha-256"
+    state: present
+  notify: Restart PostgreSQL
+
+- name: Apply configuration changes now
+  ansible.builtin.meta: flush_handlers
+
+- name: Create the replication role if it does not exist
+  become_user: postgres
+  ansible.builtin.shell: |
+    psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='{{ replication_user }}'" | grep -q 1 \
+    || psql -c "CREATE ROLE {{ replication_user }} WITH REPLICATION LOGIN PASSWORD '{{ replication_password }}'"
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: false
+
+# Created on the primary only; it replicates to the standby automatically.
+- name: Create the application role and database if they do not exist
+  become_user: postgres
+  ansible.builtin.shell: |
+    psql -tAc "SELECT 1 FROM pg_roles WHERE rolname='{{ app_user }}'" | grep -q 1 \
+    || psql -c "CREATE ROLE {{ app_user }} WITH LOGIN PASSWORD '{{ app_password }}'"
+    psql -tAc "SELECT 1 FROM pg_database WHERE datname='{{ app_db }}'" | grep -q 1 \
+    || psql -c "CREATE DATABASE {{ app_db }} OWNER {{ app_user }}"
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: false

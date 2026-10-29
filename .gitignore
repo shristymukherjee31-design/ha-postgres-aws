@@ -1,0 +1,7 @@
+*.tfstate
+*.tfstate.*
+.terraform/
+*.pem
+terraform.tfvars
+*.csv
+ansible/group_vars/all/secrets.yml

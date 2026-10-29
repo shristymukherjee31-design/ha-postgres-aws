@@ -1,0 +1,7 @@
+---
+# Non-secret settings shared by all roles.
+pg_version: 16
+vpc_cidr: "10.0.0.0/16"
+replication_user: replicator
+app_user: appuser
+app_db: appdb

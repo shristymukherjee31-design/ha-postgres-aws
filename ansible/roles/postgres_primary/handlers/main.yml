@@ -1,0 +1,6 @@
+---
+# Runs only when a task that notifies it reports a change.
+- name: Restart PostgreSQL
+  ansible.builtin.systemd:
+    name: postgresql
+    state: restarted

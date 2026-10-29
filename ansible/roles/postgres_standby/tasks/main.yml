@@ -1,0 +1,64 @@
+---
+# Configures the standby PostgreSQL server using a base backup from the primary.
+
+- name: Install acl (needed when switching to the postgres user)
+  ansible.builtin.apt:
+    name: acl
+    state: present
+
+- name: Stop PostgreSQL before initializing standby data
+  ansible.builtin.systemd:
+    name: postgresql
+    state: stopped
+
+- name: Check whether standby has already been initialized
+  ansible.builtin.stat:
+    path: /var/lib/postgresql/{{ pg_version }}/main/standby.signal
+  register: standby_signal
+
+# Ubuntu creates an empty "main" cluster during package install.
+# pg_basebackup refuses to write into a non-empty directory, so clear it first.
+- name: Clear the default data directory
+  ansible.builtin.command:
+    argv:
+      - find
+      - /var/lib/postgresql/{{ pg_version }}/main
+      - -mindepth
+      - "1"
+      - -delete
+  when: not standby_signal.stat.exists
+
+# The password is passed through the environment (not the command line),
+# so no_log is not needed and real errors stay visible.
+- name: Initialize standby from primary using pg_basebackup
+  ansible.builtin.command:
+    argv:
+      - /usr/lib/postgresql/{{ pg_version }}/bin/pg_basebackup
+      - -h
+      - "{{ hostvars[groups['primary_nodes'][0]]['ansible_default_ipv4']['address'] }}"
+      - -p
+      - "5432"
+      - -U
+      - "{{ replication_user }}"
+      - -D
+      - /var/lib/postgresql/{{ pg_version }}/main
+      - -R
+      - -X
+      - stream
+  environment:
+    PGPASSWORD: "{{ replication_password }}"
+  become_user: postgres
+  when: not standby_signal.stat.exists
+
+- name: Ensure standby data directory ownership
+  ansible.builtin.file:
+    path: /var/lib/postgresql/{{ pg_version }}/main
+    owner: postgres
+    group: postgres
+    recurse: true
+
+- name: Start PostgreSQL on standby
+  ansible.builtin.systemd:
+    name: postgresql
+    state: started
+    enabled: true
