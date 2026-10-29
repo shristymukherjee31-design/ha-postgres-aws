@@ -12,6 +12,15 @@ pipeline {
     REPO_DIR = '/home/shristy/ha-postgres-aws'
   }
 
+// The laptop's public IP changes between networks; refresh it first.
+    stage('Allow my IP') {
+      steps {
+        dir(env.REPO_DIR) {
+          sh './scripts/allow_my_ip.sh'
+        }
+      }
+    }
+
   stages {
     stage('Terraform apply') {
       steps {
