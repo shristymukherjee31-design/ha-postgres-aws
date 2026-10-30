@@ -17,3 +17,21 @@
   become: true
   roles:
     - postgres_standby
+
+# The bastion acts as the "application server" in the demo: it only needs
+# the psql client (to connect via db.internal) and nslookup (to show DNS).
+- name: Install client tools on the bastion
+  hosts: bastion_nodes
+  become: true
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+        cache_valid_time: 3600
+
+    - name: Install psql client and DNS tools
+      ansible.builtin.apt:
+        name:
+          - postgresql-client-16
+          - bind9-dnsutils
+        state: present
