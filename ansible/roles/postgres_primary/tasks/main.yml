@@ -47,3 +47,14 @@
     executable: /bin/bash
   no_log: true
   changed_when: false
+
+# Re-applies the password on every run so secrets.yml stays the single
+# source of truth for the application role.
+- name: Sync the application role password with secrets.yml
+  become_user: postgres
+  ansible.builtin.shell: |
+    psql -c "ALTER ROLE {{ app_user }} WITH PASSWORD '{{ app_password }}'"
+  args:
+    executable: /bin/bash
+  no_log: true
+  changed_when: false
