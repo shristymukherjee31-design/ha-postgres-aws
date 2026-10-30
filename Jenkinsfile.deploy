@@ -105,7 +105,7 @@ echo "SSH is ready on all hosts"
     stage('Confirm destroy') {
       when { expression { params.ACTION == 'destroy' } }
       steps {
-        input message: 'Destroy ALL infrastructure (VPC, EC2, NAT, DNS, backup bucket)?', ok: 'Destroy'
+        input message: 'Destroy ALL infrastructure (VPC, EC2, NAT, DNS)?', ok: 'Destroy'
       }
     }
 
