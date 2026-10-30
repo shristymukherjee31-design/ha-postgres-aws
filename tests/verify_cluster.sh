@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Post-deploy validation for the HA PostgreSQL stack.
+# Post-deploy cluster verification for the HA PostgreSQL stack.
 # Exits non-zero if any check fails, so a CI pipeline can stop on failure.
 set -uo pipefail
 cd "$(dirname "$0")/.."

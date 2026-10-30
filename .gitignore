@@ -6,3 +6,4 @@ terraform.tfvars
 *.csv
 ansible/group_vars/all/secrets.yml
 *@tmp/
+tfplan
