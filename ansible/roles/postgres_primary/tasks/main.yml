@@ -53,7 +53,7 @@
 - name: Sync the application role password with secrets.yml
   become_user: postgres
   ansible.builtin.shell: |
-    psql -c "ALTER ROLE {{ app_user }} WITH PASSWORD '{{ app_password }}'"
+    psql -c "ALTER ROLE {{ app_user }} WITH CREATEDB PASSWORD '{{ app_password }}'"
   args:
     executable: /bin/bash
   no_log: true
