@@ -367,7 +367,7 @@ echo "The new primary is writable (pg_is_in_recovery = f)."
 
       steps {
         dir("${env.REPO_DIR}/terraform") {
-          sh 'terraform destroy -input=false -no-color -var-file=../terraform.tfvars'
+          sh 'terraform destroy -auto-approve -input=false -no-color -var-file=../terraform.tfvars'
         }
       }
     }

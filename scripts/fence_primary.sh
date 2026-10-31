@@ -4,7 +4,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-PRIMARY_ID=$(terraform output -raw primary_instance_id)
+PRIMARY_ID=$(terraform -chdir=terraform output -raw primary_instance_id)
 
 echo "Fencing primary: stopping $PRIMARY_ID"
 aws ec2 stop-instances --instance-ids "$PRIMARY_ID" > /dev/null

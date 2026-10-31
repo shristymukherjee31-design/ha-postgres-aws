@@ -3,9 +3,9 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ZONE_ID=$(terraform output -raw route53_zone_id)
-NEW_IP=$(terraform output -raw standby_private_ip)
-NEW_ID=$(terraform output -raw standby_instance_id)
+ZONE_ID=$(terraform -chdir=terraform output -raw route53_zone_id)
+NEW_IP=$(terraform -chdir=terraform output -raw standby_private_ip)
+NEW_ID=$(terraform -chdir=terraform output -raw standby_instance_id)
 
 CHANGE_FILE=$(mktemp)
 cat > "$CHANGE_FILE" <<JSON

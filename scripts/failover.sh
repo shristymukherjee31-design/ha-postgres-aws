@@ -12,7 +12,7 @@ bash scripts/promote_standby.sh
 bash scripts/update_dns.sh
 
 # Verify: db.internal must resolve to the new primary (TTL is 10 seconds).
-EXPECTED=$(terraform output -raw standby_private_ip)
+EXPECTED=$(terraform -chdir=terraform output -raw standby_private_ip)
 for _ in $(seq 1 6); do
   GOT=$(ssh $SSH_OPTS bastion "getent hosts db.internal" | awk '{print $1}')
   [[ "$GOT" == "$EXPECTED" ]] && break

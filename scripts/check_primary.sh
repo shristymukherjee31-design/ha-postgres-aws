@@ -6,7 +6,7 @@ set -uo pipefail
 cd "$(dirname "$0")/.."
 
 SSH_OPTS="-o BatchMode=yes -o ConnectTimeout=10"
-PRIMARY_IP=$(terraform output -raw primary_private_ip)
+PRIMARY_IP=$(terraform -chdir=terraform output -raw primary_private_ip)
 
 # The checks run from the standby, so it must be reachable first.
 if ! ssh $SSH_OPTS standby true 2>/dev/null; then
