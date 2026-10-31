@@ -21,7 +21,7 @@ az_of() {
     --query 'Reservations[0].Instances[0].Placement.AvailabilityZone' --output text
 }
 
-PRIMARY_IP=$(terraform output -raw primary_private_ip)
+PRIMARY_IP=$(terraform -chdir=terraform output -raw primary_private_ip)
 
 # 1. Both database instances are running in different Availability Zones
 AZ_P=$(az_of ha-pg-primary)
